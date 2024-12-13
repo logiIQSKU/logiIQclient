@@ -1,1 +1,1 @@
-# logiIQclient
+# logiIQ_Jiwon
