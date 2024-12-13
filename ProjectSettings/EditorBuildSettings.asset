@@ -8,5 +8,8 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/OutdoorsScene.unity
     guid: 8124e5870f4fd4c779e7a5f994e84ad1
+  - enabled: 1
+    path: Assets/Scene/logiIQ.unity
+    guid: 12d6d67cf6682437f896914896ee1e60
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0
