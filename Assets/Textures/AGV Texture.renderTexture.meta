@@ -1,8 +1,15 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Assets/Textures/AGV Texture.renderTexture.meta
 guid: d3d4d7fa2de904a3297f7fdd0faa24ec
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 8400000
+========
+guid: 0b9732536117e484c97326eaf161f37a
+folderAsset: yes
+DefaultImporter:
+  externalObjects: {}
+>>>>>>>> chore/pre-main:Assets/Images.meta
   userData: 
   assetBundleName: 
   assetBundleVariant: 
