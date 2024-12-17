@@ -6,18 +6,25 @@ using UnityEngine;
 public class ForkliftAI : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private GridPartitioner gridPartitioner; // GridPartitioner·Î º¯°æ
-    [SerializeField] private Transform target;
+    [SerializeField] private GridPartitioner gridPartitioner;
     [SerializeField] private LayerMask obstacleLayer;
     [SerializeField] private float moveSpeed = 5.0f;
     [SerializeField] private float waypointThreshold = 0.5f;
 
+    [Header("Load/Unload Positions")]
+    [SerializeField] private Transform loadPosition;   // ì ì¬ ìœ„ì¹˜
+    [SerializeField] private Transform unloadPosition; // í•˜ì—­ ìœ„ì¹˜
+    [SerializeField] private GameObject cargo;         // í™”ë¬¼ ì˜¤ë¸Œì íŠ¸
+
     private Vector3 cellSize;
     private Vector2Int startCell;
-    private Vector2Int targetCell;
+    private Vector2Int loadCell;
+    private Vector2Int unloadCell;
 
     private List<Vector3> path;
+    private bool isLoaded = false; // í™”ë¬¼ ì ì¬ ìƒíƒœ
 
+    // PathNode í´ë˜ìŠ¤ ì •ì˜
     private class PathNode
     {
         public Vector2Int Position { get; }
@@ -36,55 +43,47 @@ public class ForkliftAI : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log("ForkliftAI Start method called");
-
         if (!ValidateComponents())
         {
-            Debug.LogError("Component validation failed!");
+            Debug.LogError("ForkliftAI: Component validation failed!");
             enabled = false;
             return;
         }
 
         cellSize = gridPartitioner.CellSize;
 
-        // Áï½Ã °æ·Î Ã£±â
-        FindPathToTarget();
+        // ì ì¬ ë° í•˜ì—­ ì…€ ì„¤ì •
+        loadCell = WorldToGrid(loadPosition.position);
+        unloadCell = WorldToGrid(unloadPosition.position);
+
+        // ì´ˆê¸° ê²½ë¡œ ì°¾ê¸°
+        FindPathToTarget(loadCell);
     }
 
     private bool ValidateComponents()
     {
-        if (gridPartitioner == null)
+        if (gridPartitioner == null || loadPosition == null || unloadPosition == null || cargo == null)
         {
-            Debug.LogError("GridPartitioner°¡ ¼³Á¤µÇÁö ¾Ê¾Ò½À´Ï´Ù!");
+            Debug.LogError("ForkliftAI: Required components are missing!");
             return false;
         }
-
-        if (target == null)
-        {
-            Debug.LogError("TargetÀÌ ¼³Á¤µÇÁö ¾Ê¾Ò½À´Ï´Ù!");
-            return false;
-        }
-
         return true;
     }
 
-    private void FindPathToTarget()
+    private void FindPathToTarget(Vector2Int targetCell)
     {
         startCell = WorldToGrid(transform.position);
-        targetCell = WorldToGrid(target.position);
-
-        Debug.Log($"Start Cell: {startCell}, Target Cell: {targetCell}");
-
         path = FindOptimizedPath(startCell, targetCell);
 
         if (path == null || path.Count == 0)
         {
-            Debug.LogWarning("À¯È¿ÇÑ °æ·Î¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù.");
-            return;
+            Debug.LogError($"ForkliftAI: ê²½ë¡œë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. ì‹œì‘ ì…€: {startCell}, ëª©í‘œ ì…€: {targetCell}");
         }
-
-        Debug.Log($"Path count: {path.Count}");
-        StartCoroutine(MoveAlongPath());
+        else
+        {
+            Debug.Log($"ForkliftAI: ê²½ë¡œ íƒìƒ‰ ì„±ê³µ. ê²½ë¡œ ê¸¸ì´: {path.Count}");
+            StartCoroutine(MoveAlongPath());
+        }
     }
 
     private Vector2Int WorldToGrid(Vector3 worldPosition)
@@ -92,17 +91,10 @@ public class ForkliftAI : MonoBehaviour
         Vector3 gridOrigin = gridPartitioner.transform.position;
         Vector3 localPosition = worldPosition - gridOrigin;
 
-        Vector2Int gridCell = new Vector2Int(
+        return new Vector2Int(
             Mathf.FloorToInt(localPosition.x / cellSize.x),
             Mathf.FloorToInt(localPosition.z / cellSize.z)
         );
-
-        Debug.Log($"World Position: {worldPosition}");
-        Debug.Log($"Grid Origin: {gridOrigin}");
-        Debug.Log($"Cell Size: {cellSize}");
-        Debug.Log($"Calculated Grid Cell: {gridCell}");
-
-        return gridCell;
     }
 
     private List<Vector3> FindOptimizedPath(Vector2Int start, Vector2Int goal)
@@ -110,43 +102,27 @@ public class ForkliftAI : MonoBehaviour
         var openSet = new List<PathNode>();
         var closedSet = new HashSet<Vector2Int>();
 
-        var startNode = new PathNode(start, 0, Heuristic(start, goal));
-        openSet.Add(startNode);
+        openSet.Add(new PathNode(start, 0, Heuristic(start, goal)));
 
-        const int MAX_ITERATIONS = 1000;
-        int iterations = 0;
-
-        while (openSet.Count > 0 && iterations < MAX_ITERATIONS)
+        while (openSet.Count > 0)
         {
-            iterations++;
-
             var currentNode = openSet.OrderBy(n => n.FCost).First();
-
             if (currentNode.Position == goal)
-            {
                 return ReconstructPath(currentNode);
-            }
 
             openSet.Remove(currentNode);
             closedSet.Add(currentNode.Position);
 
             foreach (var neighbor in GetValidNeighbors(currentNode.Position))
             {
-                if (closedSet.Contains(neighbor))
-                    continue;
+                if (closedSet.Contains(neighbor)) continue;
 
                 float newGCost = currentNode.GCost + 1;
                 var existingNode = openSet.FirstOrDefault(n => n.Position == neighbor);
 
                 if (existingNode == null)
                 {
-                    var newNode = new PathNode(
-                        neighbor,
-                        newGCost,
-                        newGCost + Heuristic(neighbor, goal),
-                        currentNode
-                    );
-                    openSet.Add(newNode);
+                    openSet.Add(new PathNode(neighbor, newGCost, newGCost + Heuristic(neighbor, goal), currentNode));
                 }
                 else if (newGCost < existingNode.GCost)
                 {
@@ -157,20 +133,12 @@ public class ForkliftAI : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"°æ·Î Å½»ö ½ÇÆĞ (¹İº¹ È½¼ö: {iterations})");
         return null;
     }
 
     private List<Vector2Int> GetValidNeighbors(Vector2Int cell)
     {
-        Vector2Int[] directions = new[]
-        {
-            new Vector2Int(1, 0),
-            new Vector2Int(-1, 0),
-            new Vector2Int(0, 1),
-            new Vector2Int(0, -1)
-        };
-
+        Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
         return directions
             .Select(dir => cell + dir)
             .Where(IsValidAndUnobstructedCell)
@@ -179,8 +147,10 @@ public class ForkliftAI : MonoBehaviour
 
     private bool IsValidAndUnobstructedCell(Vector2Int cell)
     {
-        // GridPartitionerÀÇ CanMoveToCell ¸Ş¼­µå »ç¿ë
-        return gridPartitioner.CanMoveToCell(cell.y, cell.x);
+        Vector2Int unloadGridCell = WorldToGrid(unloadPosition.position);
+        if (cell == unloadGridCell) return true; // í•˜ì—­ ìœ„ì¹˜ ì˜ˆì™¸ ì²˜ë¦¬
+
+        return gridPartitioner.IsWithinBounds(cell.y, cell.x) && gridPartitioner.CanMoveToCell(cell.y, cell.x);
     }
 
     private float Heuristic(Vector2Int a, Vector2Int b)
@@ -192,13 +162,11 @@ public class ForkliftAI : MonoBehaviour
     {
         var path = new List<Vector3>();
         var current = finalNode;
-
         while (current != null)
         {
             path.Add(GetWorldPositionFromGridCell(current.Position));
             current = current.Parent;
         }
-
         path.Reverse();
         return path;
     }
@@ -215,46 +183,75 @@ public class ForkliftAI : MonoBehaviour
 
     private IEnumerator MoveAlongPath()
     {
-        if (path == null || path.Count == 0)
-        {
-            Debug.LogError("No path to move along!");
-            yield break;
-        }
-
-        Debug.Log($"Starting to move along path with {path.Count} waypoints");
-
         foreach (Vector3 waypoint in path)
         {
-            Debug.Log($"Moving to waypoint: {waypoint}");
             while (Vector3.Distance(transform.position, waypoint) > waypointThreshold)
             {
-                // ´õ Á÷Á¢ÀûÀÎ ÀÌµ¿ ¹æ½Ä
-                transform.position = Vector3.MoveTowards(
-                    transform.position,
-                    waypoint,
-                    moveSpeed * Time.deltaTime
-                );
-
-                // ¸ñÇ¥ ¹æÇâÀ¸·Î È¸Àü
+                transform.position = Vector3.MoveTowards(transform.position, waypoint, moveSpeed * Time.deltaTime);
                 transform.LookAt(waypoint);
-
                 yield return null;
             }
+            Debug.Log("ì›¨ì´í¬ì¸íŠ¸ ë„ì°© ì™„ë£Œ.");
         }
 
-        Debug.Log("Áö°ÔÂ÷°¡ ¸ñÇ¥ ÁöÁ¡¿¡ µµ´ŞÇß½À´Ï´Ù.");
+        Debug.Log("ê²½ë¡œ ì´ë™ ì™„ë£Œ.");
+
+        if (!isLoaded)
+        {
+            LoadCargo();
+            FindPathToTarget(WorldToGrid(unloadPosition.position));
+        }
+        else
+        {
+            StartCoroutine(UnloadAndReturnSequence());
+        }
     }
 
-    // °æ·Î ½Ã°¢È­¸¦ À§ÇÑ µğ¹ö±× ±âÁî¸ğ
-    private void OnDrawGizmos()
+    private void LoadCargo()
     {
-        if (path != null)
+        cargo.SetActive(true);
+        cargo.transform.SetParent(transform);
+        cargo.transform.localPosition = new Vector3(0, 0.11f, 0.8f);
+        isLoaded = true;
+        Debug.Log("í™”ë¬¼ ì ì¬ ì™„ë£Œ.");
+    }
+
+    private IEnumerator UnloadAndReturnSequence()
+    {
+        UnloadCargo();
+
+        // ë’¤ë¡œ 2ë¯¸í„° ì´ë™
+        yield return MoveToPosition(transform.position - transform.forward * 2.0f);
+
+        // ì¶œë°œ ìœ„ì¹˜ë¡œ ëŒì•„ê°€ê¸°
+        ReturnToStartPosition();
+    }
+
+    private void UnloadCargo()
+    {
+        cargo.transform.SetParent(null);
+
+        // ì›í•˜ëŠ” í•˜ì—­ ìœ„ì¹˜ë¥¼ ì§ì ‘ ì„¤ì •
+        Vector3 targetPosition = new Vector3(47.4210014f, 0.0130000003f, 42.9119987f);
+        cargo.transform.position = targetPosition;
+
+        cargo.transform.rotation = Quaternion.identity; // íšŒì „ ì´ˆê¸°í™”
+        isLoaded = false;
+
+        Debug.Log($"í™”ë¬¼ í•˜ì—­ ì™„ë£Œ: ìœ„ì¹˜ = {cargo.transform.position}");
+    }
+
+    private IEnumerator MoveToPosition(Vector3 targetPosition)
+    {
+        while (Vector3.Distance(transform.position, targetPosition) > 0.1f)
         {
-            Gizmos.color = Color.red;
-            for (int i = 0; i < path.Count - 1; i++)
-            {
-                Gizmos.DrawLine(path[i], path[i + 1]);
-            }
+            transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
+            yield return null;
         }
+    }
+
+    private void ReturnToStartPosition()
+    {
+        FindPathToTarget(WorldToGrid(loadPosition.position));
     }
 }

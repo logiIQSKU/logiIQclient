@@ -3,14 +3,14 @@ using UnityEngine;
 public class GridPartitioner : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private GameObject plane; // Á÷»ç°¢Çü Æò¸é ¿ÀºêÁ§Æ®
-    [SerializeField] private int rows = 10; // ÇàÀÇ °³¼ö
-    [SerializeField] private int columns = 10; // ¿­ÀÇ °³¼ö
-    [SerializeField] private LayerMask obstacleLayer; // Àå¾Ö¹° ·¹ÀÌ¾î
+    [SerializeField] private GameObject plane; // ê·¸ë¦¬ë“œë¥¼ í‘œì‹œí•  í‰ë©´
+    [SerializeField] private int rows = 10; // ê·¸ë¦¬ë“œ í–‰ ìˆ˜
+    [SerializeField] private int columns = 10; // ê·¸ë¦¬ë“œ ì—´ ìˆ˜
+    [SerializeField] private LayerMask obstacleLayer; // ì¥ì• ë¬¼ ë ˆì´ì–´
 
-    public Vector3 CellSize { get; private set; } // °¢ ¼¿ÀÇ Å©±â
-    private Vector3 planeSize; // Æò¸éÀÇ ½ÇÁ¦ Å©±â
-    private bool[,] cellAccess; // ¼¿ Á¢±Ù °¡´É ¿©ºÎ
+    public Vector3 CellSize { get; private set; } // ê° ì…€ì˜ í¬ê¸°
+    private Vector3 planeSize; // í‰ë©´ì˜ ì „ì²´ í¬ê¸°
+    private bool[,] cellAccess; // ì…€ ì ‘ê·¼ ê°€ëŠ¥ ì—¬ë¶€ ë°°ì—´
 
     private void Start()
     {
@@ -25,13 +25,13 @@ public class GridPartitioner : MonoBehaviour
     {
         if (plane == null)
         {
-            Debug.LogError("Æò¸é ¿ÀºêÁ§Æ®¸¦ ¼³Á¤ÇÏ¼¼¿ä!");
+            Debug.LogError("í‰ë©´ ê°ì²´ê°€ ì„¤ì •ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤!");
             return false;
         }
 
         if (rows <= 0 || columns <= 0)
         {
-            Debug.LogError("Çà°ú ¿­ÀÇ °³¼ö´Â 0º¸´Ù Ä¿¾ß ÇÕ´Ï´Ù!");
+            Debug.LogError("í–‰ ë˜ëŠ” ì—´ ìˆ˜ëŠ” 0ë³´ë‹¤ ì»¤ì•¼ í•©ë‹ˆë‹¤!");
             return false;
         }
 
@@ -40,67 +40,73 @@ public class GridPartitioner : MonoBehaviour
 
     private void CalculatePlaneSize()
     {
-        // Æò¸éÀÇ Å©±â °è»ê
+        // í‰ë©´ì˜ í¬ê¸° ê³„ì‚°
         Renderer planeRenderer = plane.GetComponent<Renderer>();
         if (planeRenderer == null)
         {
-            Debug.LogError("Æò¸é¿¡ Renderer°¡ ¾ø½À´Ï´Ù!");
+            Debug.LogError("í‰ë©´ì— Renderer ì»´í¬ë„ŒíŠ¸ê°€ ì—†ìŠµë‹ˆë‹¤!");
             return;
         }
 
-        planeSize = planeRenderer.bounds.size; // Æò¸éÀÇ ½ÇÁ¦ Å©±â
-        CellSize = new Vector3(planeSize.x / columns, 1, planeSize.z / rows); // ¼¿ Å©±â °è»ê
-        Debug.Log($"Æò¸é Å©±â: {planeSize}, ¼¿ Å©±â: {CellSize}");
+        planeSize = planeRenderer.bounds.size; // í‰ë©´ì˜ ì‹¤ì œ í¬ê¸°
+        CellSize = new Vector3(planeSize.x / columns, 1, planeSize.z / rows); // ì…€ í¬ê¸° ê³„ì‚°
+        Debug.Log($"í‰ë©´ í¬ê¸°: {planeSize}, ì…€ í¬ê¸°: {CellSize}");
     }
 
     private void InitializeGrid()
     {
-        // ¼¿ Á¢±Ù °¡´É ¿©ºÎ ¹è¿­ ÃÊ±âÈ­
+        // ì…€ ì ‘ê·¼ ê°€ëŠ¥ ì—¬ë¶€ ë°°ì—´ ì´ˆê¸°í™”
         cellAccess = new bool[rows, columns];
     }
 
     private void CheckObstacles()
     {
-        Vector3 origin = plane.transform.position - planeSize / 2; // Æò¸éÀÇ ¿ŞÂÊ ¾Æ·¡ ¸ğ¼­¸®
+        Vector3 origin = plane.transform.position - planeSize / 2; // í‰ë©´ì˜ ì™¼ìª½ í•˜ë‹¨ ê¸°ì¤€ì 
         for (int row = 0; row < rows; row++)
         {
             for (int col = 0; col < columns; col++)
             {
-                // ¼¿ Áß½É °è»ê
+                // ì…€ì˜ ì¤‘ì‹¬ ì¢Œí‘œ ê³„ì‚°
                 Vector3 cellCenter = origin + new Vector3(
                     col * CellSize.x + CellSize.x / 2,
                     0,
                     row * CellSize.z + CellSize.z / 2
                 );
 
-                // Àå¾Ö¹° È®ÀÎ
+                // ì¥ì• ë¬¼ ì¡´ì¬ ì—¬ë¶€ í™•ì¸
                 bool isObstacle = Physics.CheckBox(cellCenter, CellSize / 2, Quaternion.identity, obstacleLayer);
 
-                // Á¢±Ù °¡´É ¿©ºÎ ÀúÀå
+                // ì ‘ê·¼ ê°€ëŠ¥ ì—¬ë¶€ ì„¤ì •
                 cellAccess[row, col] = !isObstacle;
 
-                // µğ¹ö±× ·Î±×
-                Debug.Log($"¼¿[{row}, {col}] Áß½É: {cellCenter}, Àå¾Ö¹° °¨Áö ¿©ºÎ: {isObstacle}");
+                // ë””ë²„ê·¸ ë¡œê·¸
+                //Debug.Log($"ì…€[{row}, {col}] ì¤‘ì‹¬: {cellCenter}, ì¥ì• ë¬¼ ì—¬ë¶€: {isObstacle}");
             }
         }
     }
 
     public bool CanMoveToCell(int row, int col)
     {
-        if (row < 0 || row >= rows || col < 0 || col >= columns)
+        if (!IsWithinBounds(row, col))
         {
-            Debug.LogError("¼¿ ÀÎµ¦½º°¡ ¹üÀ§¸¦ ¹ş¾î³µ½À´Ï´Ù!");
+            Debug.LogWarning($"ì…€[{row}, {col}]ì€ ê·¸ë¦¬ë“œ ë²”ìœ„ë¥¼ ë²—ì–´ë‚¬ìŠµë‹ˆë‹¤!");
             return false;
         }
         return cellAccess[row, col];
     }
 
+    public bool IsWithinBounds(int row, int col)
+    {
+        // í–‰ê³¼ ì—´ì´ ê·¸ë¦¬ë“œ ë²”ìœ„ ë‚´ì— ìˆëŠ”ì§€ í™•ì¸
+        return row >= 0 && row < rows && col >= 0 && col < columns;
+    }
+
     private void OnDrawGizmos()
     {
-        // Æò¸é ¶Ç´Â ¼¿ Å©±â°¡ ÃÊ±âÈ­µÇÁö ¾ÊÀº °æ¿ì ¸®ÅÏ
         if (plane == null || CellSize == Vector3.zero) return;
 
-        Vector3 origin = plane.transform.position - planeSize / 2; // Æò¸éÀÇ ¿ŞÂÊ ¾Æ·¡ ¸ğ¼­¸®
+        Vector3 origin = plane.transform.position - planeSize / 2; // í‰ë©´ì˜ ì™¼ìª½ í•˜ë‹¨ ê¸°ì¤€ì 
+
         for (int row = 0; row < rows; row++)
         {
             for (int col = 0; col < columns; col++)
@@ -111,8 +117,16 @@ public class GridPartitioner : MonoBehaviour
                     row * CellSize.z + CellSize.z / 2
                 );
 
-                // Gizmos·Î ¼¿ Ç¥½Ã
-                Gizmos.color = cellAccess != null && cellAccess[row, col] ? Color.green : Color.red;
+                // ì…€ ì ‘ê·¼ ê°€ëŠ¥ ì—¬ë¶€ì— ë”°ë¼ ìƒ‰ìƒ ì„¤ì •
+                if (cellAccess != null && IsWithinBounds(row, col))
+                {
+                    Gizmos.color = cellAccess[row, col] ? Color.green : Color.red;
+                }
+                else
+                {
+                    Gizmos.color = Color.gray; // ë²”ìœ„ë¥¼ ë²—ì–´ë‚œ ê²½ìš°
+                }
+
                 Gizmos.DrawWireCube(cellCenter, new Vector3(CellSize.x, 0.01f, CellSize.z));
             }
         }
